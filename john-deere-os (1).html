@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>John Deere OS</title>
+<style>
+  :root{
+    --jd-green:#367C2B;
+    --jd-green-dark:#2C5E22;
+    --jd-yellow:#FFDE00;
+    --jd-darkgray:#1a1a1a;
+    --jd-gray:#2b2b2b;
+    --jd-lightgray:#4d4d4d;
+    --jd-white:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; font-family:'Segoe UI', Arial, sans-serif; overflow:hidden;}
+  body{
+    background: linear-gradient(135deg, #0d1f0a 0%, var(--jd-gray) 60%, #0d1f0a 100%);
+    background-size: cover;
+    position:relative;
+  }
+  /* Diagonal hazard stripes overlay */
+  #desktop{
+    position:absolute; top:0; left:0; right:0; bottom:48px; overflow:hidden;
+  }
+  #desktop::before{
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(135deg, rgba(54,124,43,0.08) 0px, rgba(54,124,43,0.08) 40px, transparent 40px, transparent 80px);
+    pointer-events:none;
+  }
+  .desktop-title{
+    position:absolute; top:20px; left:20px; color:var(--jd-green);
+    font-size:28px; font-weight:900; letter-spacing:2px; text-shadow:2px 2px 0 #000;
+    font-family: 'Arial Black', sans-serif;
+  }
+  .desktop-title span{color:var(--jd-white);}
+  .desktop-sub{
+    position:absolute; top:54px; left:20px; color:#ccc; font-size:12px; letter-spacing:3px;
+  }
+  /* Desktop icons */
+  .icon{
+    position:absolute; width:90px; text-align:center; cursor:pointer; user-select:none;
+    color:var(--jd-white); font-size:12px; font-weight:600;
+  }
+  .icon-box{
+    width:60px; height:60px; margin:0 auto 6px; border-radius:8px;
+    background: var(--jd-green); border:3px solid var(--jd-yellow);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+    overflow:hidden;
+  }
+  .icon-box svg{ width:42px; height:42px; }
+  .icon:hover .icon-box{ transform: scale(1.08); border-color:var(--jd-green);}
+  .icon:active .icon-box{ transform: scale(0.96); }
+  .icon span.label{
+    background: rgba(0,0,0,0.5); padding:2px 4px; border-radius:3px; display:inline-block;
+  }
+
+  /* Taskbar */
+  #taskbar{
+    position:absolute; bottom:0; left:0; right:0; height:48px;
+    background: var(--jd-yellow);
+    border-top: 3px solid var(--jd-green);
+    display:flex; align-items:center; padding:0 10px; gap:8px;
+    z-index:1000;
+  }
+  #start-btn{
+    background:var(--jd-green); color:var(--jd-yellow); border:none; font-weight:900;
+    padding:8px 16px; border-radius:4px; cursor:pointer; font-size:14px; letter-spacing:1px;
+    font-family:'Arial Black', sans-serif;
+  }
+  #start-btn:hover{background:var(--jd-green-dark);}
+  .pin-icon{
+    width:36px; height:36px; background:var(--jd-gray); border:2px solid var(--jd-lightgray);
+    border-radius:5px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .pin-icon svg{ width:24px; height:24px; }
+  .pin-icon:hover{ border-color:var(--jd-green); transform:scale(1.06); }
+  .pin-icon:active{ transform:scale(0.95); }
+  .taskbar-app{
+    background:var(--jd-gray); color:var(--jd-white); border:1px solid var(--jd-lightgray);
+    padding:6px 14px; border-radius:4px; cursor:pointer; font-size:13px; max-width:160px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .taskbar-app.active{ border-color:var(--jd-green); color:var(--jd-green); }
+  #clock{
+    margin-left:auto; color:var(--jd-green); font-weight:bold; font-size:14px; letter-spacing:1px;
+  }
+
+  /* Start menu */
+  #start-menu{
+    position:absolute; bottom:48px; left:10px; width:240px;
+    background: var(--jd-darkgray); border:3px solid var(--jd-green); border-radius:6px 6px 0 0;
+    display:none; z-index:1001; box-shadow:0 -4px 20px rgba(0,0,0,0.6);
+  }
+  #start-menu.show{display:block;}
+  #start-menu .sm-header{
+    background:var(--jd-green); color:var(--jd-yellow); font-weight:900; padding:10px 12px;
+    font-size:14px; letter-spacing:1px;
+  }
+  #start-menu .sm-item{
+    padding:12px 14px; color:var(--jd-white); cursor:pointer; display:flex; align-items:center; gap:10px;
+    font-size:14px; border-bottom:1px solid #333;
+  }
+  #start-menu .sm-item:hover{ background:var(--jd-lightgray); }
+  #start-menu .sm-item .ic{font-size:20px;}
+
+  /* Windows */
+  .window{
+    position:absolute; min-width:340px; min-height:240px;
+    background: var(--jd-darkgray); border:3px solid var(--jd-green); border-radius:6px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .window-titlebar{
+    background: var(--jd-green); color:var(--jd-yellow); padding:8px 10px;
+    display:flex; align-items:center; justify-content:space-between; cursor:move;
+    font-weight:900; letter-spacing:1px; font-size:13px;
+    font-family:'Arial Black', sans-serif;
+  }
+  .window-controls{display:flex; gap:6px;}
+  .win-btn{
+    width:22px; height:22px; border:2px solid var(--jd-yellow); border-radius:3px;
+    background:var(--jd-yellow); color:var(--jd-green); font-weight:bold; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:13px; line-height:1;
+  }
+  .win-btn:hover{ background:#cc0000; color:#fff; border-color:#cc0000;}
+  .window-body{
+    flex:1; overflow:auto; padding:14px; color:var(--jd-white); background:var(--jd-gray);
+  }
+
+  /* Form elements */
+  label{display:block; margin:10px 0 4px; color:var(--jd-green); font-weight:bold; font-size:13px;}
+  select, input, textarea, button.cat-btn{
+    width:100%; padding:8px; border-radius:4px; border:2px solid var(--jd-lightgray);
+    background:#222; color:#fff; font-size:14px;
+  }
+  select:focus, input:focus, textarea:focus{ outline:none; border-color:var(--jd-green); }
+  button.cat-btn{
+    background:var(--jd-green); color:var(--jd-yellow); font-weight:900; border:2px solid var(--jd-green);
+    cursor:pointer; margin-top:14px; letter-spacing:1px; font-family:'Arial Black', sans-serif;
+  }
+  button.cat-btn:hover{ background:var(--jd-green-dark); }
+  .result-box{
+    margin-top:16px; background:#111; border:2px solid var(--jd-green); border-radius:6px;
+    padding:12px; line-height:1.8; font-size:14px;
+  }
+  .result-box b{color:var(--jd-green);}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  /* Mail App */
+  .mail-layout{display:flex; height:100%; gap:10px;}
+  .mail-list{width:38%; border-right:2px solid var(--jd-lightgray); overflow:auto; padding-right:8px;}
+  .mail-item{
+    background:#222; border:1px solid var(--jd-lightgray); border-radius:4px; padding:8px;
+    margin-bottom:6px; cursor:pointer; font-size:12px;
+  }
+  .mail-item:hover{border-color:var(--jd-green);}
+  .mail-item .m-subj{font-weight:bold; color:var(--jd-green);}
+  .mail-item .m-meta{color:#aaa; font-size:11px;}
+  .mail-view{flex:1; display:flex; flex-direction:column;}
+  .mail-tabs{display:flex; gap:6px; margin-bottom:8px;}
+  .mail-tabs button{
+    flex:1; padding:6px; background:#333; color:#fff; border:1px solid var(--jd-lightgray);
+    border-radius:4px; cursor:pointer; font-size:12px;
+  }
+  .mail-tabs button.active{background:var(--jd-green); color:#fff; font-weight:bold;}
+
+  /* Search App */
+  .search-wrap{ text-align:center; padding-top:30px; }
+  .search-logo{ font-size:42px; font-weight:900; letter-spacing:2px; font-family:'Arial Black',sans-serif; color:var(--jd-green); text-shadow:2px 2px 0 #000;}
+  .search-logo span{color:#fff;}
+  .search-bar{
+    display:flex; max-width:500px; margin:20px auto; border:3px solid var(--jd-green); border-radius:24px;
+    overflow:hidden; background:#222;
+  }
+  .search-bar input{border:none; border-radius:0; flex:1;}
+  .search-bar button{
+    border:none; background:var(--jd-green); color:#fff; font-weight:900; padding:0 20px; cursor:pointer;
+  }
+  .search-results{ text-align:left; max-width:600px; margin:20px auto; }
+  .search-result{
+    background:#222; border:1px solid var(--jd-lightgray); border-radius:6px; padding:10px; margin-bottom:8px;
+  }
+  .search-result a{color:#8ab4f8; text-decoration:none; font-size:15px;}
+  .search-result .sr-desc{color:#ccc; font-size:13px; margin-top:4px;}
+  .search-result .sr-url{color:#5a8; font-size:11px;}
+  .quick-links{display:flex; gap:10px; justify-content:center; margin-top:10px; flex-wrap:wrap;}
+  .quick-links button{
+    background:#333; border:1px solid var(--jd-green); color:var(--jd-green); padding:6px 14px;
+    border-radius:16px; cursor:pointer; font-size:12px;
+  }
+  .quick-links button:hover{background:var(--jd-green); color:#fff;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--jd-green); border-radius:4px;}
+  ::-webkit-scrollbar-track{background:#222;}
+
+  /* Machine Control App */
+  .mc-status-banner{
+    display:flex; align-items:center; gap:10px; background:#111; border:2px solid var(--jd-green);
+    border-radius:6px; padding:12px; font-weight:900; font-size:16px; letter-spacing:2px;
+    color:var(--jd-white); font-family:'Arial Black', sans-serif;
+  }
+  .mc-status-light{
+    width:18px; height:18px; border-radius:50%; display:inline-block; border:2px solid #000;
+    background:#444; box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+  }
+  .mc-status-light.off{ background:#5a1010; box-shadow:0 0 6px rgba(255,0,0,0.4); }
+  .mc-status-light.on{ background:#2ecc40; box-shadow:0 0 10px rgba(46,204,64,0.9); }
+
+  .mc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .mc-btn{ margin-top:0; }
+  .mc-btn.engine-on{ background:#2ecc40; border-color:#2ecc40; color:#000; }
+  .mc-btn.lights-on{ background:#ffe98a; border-color:#ffe98a; color:#000; }
+
+  .mc-gauges{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .gauge-card{
+    background:#1c1c1c; border:2px solid var(--jd-lightgray); border-radius:6px; padding:10px;
+  }
+  .gauge-label{ color:var(--jd-green); font-size:11px; font-weight:bold; letter-spacing:1px; margin-bottom:6px; }
+  .gauge-bar-track{
+    width:100%; height:12px; background:#000; border-radius:6px; overflow:hidden; border:1px solid #444;
+  }
+  .gauge-bar-fill{ height:100%; border-radius:6px; transition:width 0.4s ease; }
+  .gauge-value{ margin-top:6px; font-size:13px; font-weight:bold; color:#fff; text-align:right; }
+</style>
+</head>
+<body>
+
+<div id="desktop">
+  <div class="desktop-title">JOHN DEERE<span> OS</span></div>
+  <div class="desktop-sub">AGRICULTURE &amp; FORESTRY WORKSTATION</div>
+
+  <div class="icon" style="top:120px; left:30px;" onclick="openWindow('calc')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect width="64" height="64" fill="#000"/>
+        <polygon points="6,46 14,18 22,46 17,46 15.5,40 10.5,40 9,46" fill="#367C2B"/>
+        <polygon points="14,18 22,18 17,40" fill="#000" opacity="0"/>
+        <rect x="24" y="22" width="16" height="5" fill="#367C2B"/>
+        <rect x="29.5" y="22" width="5" height="24" fill="#367C2B"/>
+        <polygon points="44,46 52,18 60,46 55,46 53.5,40 48.5,40 47,46" fill="#367C2B"/>
+        <rect x="10.5" y="40" width="5" height="4" fill="#367C2B"/>
+        <rect x="48.5" y="40" width="5" height="4" fill="#367C2B"/>
+      </svg>
+    </div>
+    <span class="label">Equipment Calculator</span>
+  </div>
+  <div class="icon" style="top:230px; left:30px;" onclick="openWindow('mail')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="14" width="52" height="38" rx="3" fill="#367C2B" stroke="#000" stroke-width="2.5"/>
+        <path d="M8 16 L32 38 L56 16" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M8 50 L24 32" stroke="#000" stroke-width="2.5" fill="none"/>
+        <path d="M56 50 L40 32" stroke="#000" stroke-width="2.5" fill="none"/>
+        <circle cx="46" cy="44" r="9" fill="#000"/>
+        <text x="46" y="48" font-size="11" fill="#367C2B" text-anchor="middle" font-weight="bold" font-family="Arial">JD</text>
+      </svg>
+    </div>
+    <span class="label">Deere Mail</span>
+  </div>
+  <div class="icon" style="top:340px; left:30px;" onclick="openWindow('search')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="28" cy="28" r="18" fill="#222" stroke="#367C2B" stroke-width="5"/>
+        <circle cx="28" cy="28" r="10" fill="none" stroke="#367C2B" stroke-width="2.5"/>
+        <rect x="42" y="42" width="16" height="9" rx="3" transform="rotate(45 50 46)" fill="#367C2B" stroke="#000" stroke-width="2"/>
+        <path d="M20 28 a8 8 0 0 1 8 -8" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="label">Deere Search</span>
+  </div>
+  <div class="icon" style="top:450px; left:30px;" onclick="openWindow('logging')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="26" width="56" height="14" rx="3" fill="#8B5A2B" stroke="#000" stroke-width="2"/>
+        <ellipse cx="8" cy="33" rx="4.5" ry="6.5" fill="#C68642" stroke="#000" stroke-width="2"/>
+        <ellipse cx="56" cy="33" rx="4.5" ry="6.5" fill="#C68642" stroke="#000" stroke-width="2"/>
+        <rect x="4" y="40" width="56" height="12" rx="3" fill="#A0703A" stroke="#000" stroke-width="2"/>
+        <ellipse cx="8" cy="46" rx="4" ry="5.5" fill="#D9A066" stroke="#000" stroke-width="2"/>
+        <ellipse cx="56" cy="46" rx="4" ry="5.5" fill="#D9A066" stroke="#000" stroke-width="2"/>
+        <circle cx="14" cy="14" r="7" fill="none" stroke="#367C2B" stroke-width="3"/>
+        <path d="M14 7 L14 21 M7 14 L21 14" stroke="#367C2B" stroke-width="2"/>
+      </svg>
+    </div>
+    <span class="label">Logging Calculator</span>
+  </div>
+  <div class="icon" style="top:560px; left:30px;" onclick="openWindow('maps')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="52" height="52" rx="4" fill="#1c3318" stroke="#367C2B" stroke-width="3"/>
+        <path d="M6 24 L58 18 M6 42 L58 48 M22 6 L18 58 M44 6 L48 58" stroke="#2f5a26" stroke-width="2" fill="none"/>
+        <circle cx="32" cy="32" r="6" fill="#FFDE00" stroke="#000" stroke-width="2"/>
+        <path d="M32 14 a18 18 0 0 1 0 36" fill="none" stroke="#367C2B" stroke-width="3" stroke-dasharray="4 3"/>
+      </svg>
+    </div>
+    <span class="label">Field Maps</span>
+  </div>
+  <div class="icon" style="top:670px; left:30px;" onclick="openWindow('control')">
+    <div class="icon-box">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="34" width="44" height="14" rx="2" fill="#333" stroke="#000" stroke-width="2"/>
+        <g fill="#367C2B" stroke="#000" stroke-width="1.5">
+          <rect x="14" y="14" width="9" height="20" rx="1" transform="rotate(-20 18.5 24)"/>
+          <rect x="26" y="14" width="9" height="20" rx="1" transform="rotate(20 30.5 24)"/>
+          <rect x="38" y="14" width="9" height="20" rx="1" transform="rotate(-20 42.5 24)"/>
+          <rect x="46" y="14" width="9" height="20" rx="1" transform="rotate(20 50.5 24)"/>
+        </g>
+        <circle cx="18.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="30.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="42.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="50.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <rect x="6" y="48" width="52" height="8" rx="2" fill="#222" stroke="#000" stroke-width="2"/>
+        <circle cx="14" cy="56" r="4" fill="#222" stroke="#000" stroke-width="1.5"/>
+        <circle cx="50" cy="56" r="4" fill="#222" stroke="#000" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <span class="label">Machine Control</span>
+  </div>
+</div>
+
+<div id="taskbar">
+  <button id="start-btn" onclick="toggleStart()">⚙ START</button>
+  <div id="pinned-apps" style="display:flex; gap:6px;">
+    <div class="pin-icon" onclick="openWindow('calc')" title="Equipment Calculator">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect width="64" height="64" fill="#000"/>
+        <polygon points="6,46 14,18 22,46 17,46 15.5,40 10.5,40 9,46" fill="#367C2B"/>
+        <rect x="24" y="22" width="16" height="5" fill="#367C2B"/>
+        <rect x="29.5" y="22" width="5" height="24" fill="#367C2B"/>
+        <polygon points="44,46 52,18 60,46 55,46 53.5,40 48.5,40 47,46" fill="#367C2B"/>
+        <rect x="10.5" y="40" width="5" height="4" fill="#367C2B"/>
+        <rect x="48.5" y="40" width="5" height="4" fill="#367C2B"/>
+      </svg>
+    </div>
+    <div class="pin-icon" onclick="openWindow('mail')" title="Deere Mail">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="14" width="52" height="38" rx="3" fill="#367C2B" stroke="#000" stroke-width="2.5"/>
+        <path d="M8 16 L32 38 L56 16" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M8 50 L24 32" stroke="#000" stroke-width="2.5" fill="none"/>
+        <path d="M56 50 L40 32" stroke="#000" stroke-width="2.5" fill="none"/>
+        <circle cx="46" cy="44" r="9" fill="#000"/>
+        <text x="46" y="48" font-size="11" fill="#367C2B" text-anchor="middle" font-weight="bold" font-family="Arial">JD</text>
+      </svg>
+    </div>
+    <div class="pin-icon" onclick="openWindow('search')" title="Deere Search">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="28" cy="28" r="18" fill="#222" stroke="#367C2B" stroke-width="5"/>
+        <circle cx="28" cy="28" r="10" fill="none" stroke="#367C2B" stroke-width="2.5"/>
+        <rect x="42" y="42" width="16" height="9" rx="3" transform="rotate(45 50 46)" fill="#367C2B" stroke="#000" stroke-width="2"/>
+        <path d="M20 28 a8 8 0 0 1 8 -8" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="pin-icon" onclick="openWindow('logging')" title="Logging Calculator">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="26" width="56" height="14" rx="3" fill="#8B5A2B" stroke="#000" stroke-width="2"/>
+        <ellipse cx="8" cy="33" rx="4.5" ry="6.5" fill="#C68642" stroke="#000" stroke-width="2"/>
+        <ellipse cx="56" cy="33" rx="4.5" ry="6.5" fill="#C68642" stroke="#000" stroke-width="2"/>
+        <rect x="4" y="40" width="56" height="12" rx="3" fill="#A0703A" stroke="#000" stroke-width="2"/>
+        <ellipse cx="8" cy="46" rx="4" ry="5.5" fill="#D9A066" stroke="#000" stroke-width="2"/>
+        <ellipse cx="56" cy="46" rx="4" ry="5.5" fill="#D9A066" stroke="#000" stroke-width="2"/>
+        <circle cx="14" cy="14" r="7" fill="none" stroke="#367C2B" stroke-width="3"/>
+        <path d="M14 7 L14 21 M7 14 L21 14" stroke="#367C2B" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="pin-icon" onclick="openWindow('maps')" title="Field Maps">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="52" height="52" rx="4" fill="#1c3318" stroke="#367C2B" stroke-width="3"/>
+        <path d="M6 24 L58 18 M6 42 L58 48 M22 6 L18 58 M44 6 L48 58" stroke="#2f5a26" stroke-width="2" fill="none"/>
+        <circle cx="32" cy="32" r="6" fill="#FFDE00" stroke="#000" stroke-width="2"/>
+        <path d="M32 14 a18 18 0 0 1 0 36" fill="none" stroke="#367C2B" stroke-width="3" stroke-dasharray="4 3"/>
+      </svg>
+    </div>
+    <div class="pin-icon" onclick="openWindow('control')" title="Machine Control">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="34" width="44" height="14" rx="2" fill="#333" stroke="#000" stroke-width="2"/>
+        <g fill="#367C2B" stroke="#000" stroke-width="1.5">
+          <rect x="14" y="14" width="9" height="20" rx="1" transform="rotate(-20 18.5 24)"/>
+          <rect x="26" y="14" width="9" height="20" rx="1" transform="rotate(20 30.5 24)"/>
+          <rect x="38" y="14" width="9" height="20" rx="1" transform="rotate(-20 42.5 24)"/>
+          <rect x="46" y="14" width="9" height="20" rx="1" transform="rotate(20 50.5 24)"/>
+        </g>
+        <circle cx="18.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="30.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="42.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <circle cx="50.5" cy="13" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+        <rect x="6" y="48" width="52" height="8" rx="2" fill="#222" stroke="#000" stroke-width="2"/>
+        <circle cx="14" cy="56" r="4" fill="#222" stroke="#000" stroke-width="1.5"/>
+        <circle cx="50" cy="56" r="4" fill="#222" stroke="#000" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </div>
+  <div id="taskbar-apps" style="display:flex; gap:8px;"></div>
+  <div id="clock"></div>
+</div>
+
+<div id="start-menu">
+  <div class="sm-header">JOHN DEERE OS</div>
+  <div class="sm-item" onclick="openWindow('calc'); toggleStart()"><span class="ic">🚜</span> Equipment Calculator</div>
+  <div class="sm-item" onclick="openWindow('mail'); toggleStart()"><span class="ic">✉️</span> Deere Mail</div>
+  <div class="sm-item" onclick="openWindow('search'); toggleStart()"><span class="ic">🔍</span> Deere Search</div>
+  <div class="sm-item" onclick="openWindow('logging'); toggleStart()"><span class="ic">🌲</span> Logging Calculator</div>
+  <div class="sm-item" onclick="openWindow('maps'); toggleStart()"><span class="ic">🗺️</span> Field Maps</div>
+  <div class="sm-item" onclick="openWindow('control'); toggleStart()"><span class="ic">⚙️</span> Machine Control</div>
+</div>
+
+<!-- ================= CALCULATOR WINDOW ================= -->
+<div class="window" id="win-calc" style="top:60px; left:140px; width:480px; height:560px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'calc')">
+    <span>🚜 EQUIPMENT CALCULATOR</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('calc')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('calc')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('calc')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <label>Select Vehicle</label>
+    <select id="vehicle">
+      <optgroup label="Compact Utility Tractors">
+        <option value="tr-1023E">Tractor - 1023E</option>
+        <option value="tr-2025R">Tractor - 2025R</option>
+        <option value="tr-2032R">Tractor - 2032R</option>
+        <option value="tr-3025E">Tractor - 3025E</option>
+        <option value="tr-3038E">Tractor - 3038E</option>
+        <option value="tr-4044M">Tractor - 4044M</option>
+        <option value="tr-4066R">Tractor - 4066R</option>
+      </optgroup>
+      <optgroup label="Utility Tractors">
+        <option value="tr-5075E">Tractor - 5075E</option>
+        <option value="tr-5100M">Tractor - 5100M</option>
+        <option value="tr-6105M">Tractor - 6105M</option>
+        <option value="tr-6120M">Tractor - 6120M</option>
+        <option value="tr-6155M">Tractor - 6155M</option>
+      </optgroup>
+      <optgroup label="Row Crop Tractors">
+        <option value="tr-6175R">Tractor - 6175R</option>
+        <option value="tr-6195R">Tractor - 6195R</option>
+        <option value="tr-7230R">Tractor - 7230R</option>
+        <option value="tr-7310R">Tractor - 7310R</option>
+        <option value="tr-8320R">Tractor - 8320R</option>
+        <option value="tr-8R 410" selected>Tractor - 8R 410 (Best Seller)</option>
+      </optgroup>
+      <optgroup label="4WD Articulated Tractors">
+        <option value="tr-9450">Tractor - 9450 (4WD)</option>
+        <option value="tr-9520">Tractor - 9520 (4WD)</option>
+        <option value="tr-9R 540">Tractor - 9R 540 (4WD)</option>
+        <option value="tr-9RX640">Tractor - 9RX 640 (Track 4WD)</option>
+      </optgroup>
+      <optgroup label="Combine Harvesters">
+        <option value="cmb-S540">Combine - S540</option>
+        <option value="cmb-S550">Combine - S550</option>
+        <option value="cmb-S560">Combine - S560</option>
+        <option value="cmb-S570">Combine - S570</option>
+        <option value="cmb-S580">Combine - S580</option>
+        <option value="cmb-S590">Combine - S590</option>
+        <option value="cmb-S700">Combine - S700</option>
+        <option value="cmb-S780">Combine - S780</option>
+        <option value="cmb-S790">Combine - S790 (Largest)</option>
+        <option value="cmb-X9-1000">Combine - X9 1000</option>
+        <option value="cmb-X9-1100">Combine - X9 1100</option>
+      </optgroup>
+      <optgroup label="Skid Steers">
+        <option value="ss-316">Skid Steer - 316</option>
+        <option value="ss-318R">Skid Steer - 318R</option>
+        <option value="ss-320">Skid Steer - 320</option>
+        <option value="ss-324G">Skid Steer - 324G</option>
+        <option value="ss-326">Skid Steer - 326</option>
+        <option value="ss-332">Skid Steer - 332</option>
+      </optgroup>
+      <optgroup label="Compact Track Loaders">
+        <option value="ctl-317G">Compact Track Loader - 317G</option>
+        <option value="ctl-323G">Compact Track Loader - 323G</option>
+        <option value="ctl-325G">Compact Track Loader - 325G</option>
+        <option value="ctl-333G">Compact Track Loader - 333G</option>
+      </optgroup>
+      <optgroup label="Crawler Dozers">
+        <option value="dz-450">Dozer - 450</option>
+        <option value="dz-550">Dozer - 550</option>
+        <option value="dz-650">Dozer - 650</option>
+        <option value="dz-700">Dozer - 700</option>
+        <option value="dz-750">Dozer - 750</option>
+        <option value="dz-850">Dozer - 850</option>
+        <option value="dz-950">Dozer - 950</option>
+        <option value="dz-1050">Dozer - 1050 (Largest)</option>
+      </optgroup>
+      <optgroup label="Skidders (Forestry)">
+        <option value="sk-548L">Skidder - 548L (Cable)</option>
+        <option value="sk-648L">Skidder - 648L (Grapple)</option>
+        <option value="sk-748L">Skidder - 748L (Grapple)</option>
+        <option value="sk-848L">Skidder - 848L (Grapple)</option>
+        <option value="sk-948L">Skidder - 948L (Largest Grapple)</option>
+      </optgroup>
+      <optgroup label="Forwarders & Feller Bunchers (Forestry)">
+        <option value="fw-1010G">Forwarder - 1010G</option>
+        <option value="fw-1110G">Forwarder - 1110G</option>
+        <option value="fw-1210G">Forwarder - 1210G</option>
+        <option value="fb-643L">Feller Buncher - 643L</option>
+        <option value="fb-843L">Feller Buncher - 843L (Tracked)</option>
+        <option value="hv-959M">Tracked Harvester - 959M</option>
+      </optgroup>
+      <optgroup label="Excavators">
+        <option value="exc-26G">Excavator - 26G (Compact)</option>
+        <option value="exc-35G">Excavator - 35G (Compact)</option>
+        <option value="exc-60G">Excavator - 60G (Compact)</option>
+        <option value="exc-85G">Excavator - 85G (Compact)</option>
+        <option value="exc-130G">Excavator - 130G</option>
+        <option value="exc-135G">Excavator - 135G</option>
+        <option value="exc-210G">Excavator - 210G LC</option>
+        <option value="exc-245G">Excavator - 245G LC</option>
+        <option value="exc-290G">Excavator - 290G LC</option>
+        <option value="exc-350G">Excavator - 350G LC</option>
+        <option value="exc-470G">Excavator - 470G LC (Largest)</option>
+      </optgroup>
+      <optgroup label="Articulated Dump Trucks">
+        <option value="dt-310E">Dump Truck - 310E (ADT)</option>
+        <option value="dt-370E">Dump Truck - 370E (ADT)</option>
+        <option value="dt-410E">Dump Truck - 410E (ADT)</option>
+        <option value="dt-460E">Dump Truck - 460E (ADT, Largest)</option>
+      </optgroup>
+      <optgroup label="Wheel Loaders">
+        <option value="wl-244L">Wheel Loader - 244L</option>
+        <option value="wl-324L">Wheel Loader - 324L</option>
+        <option value="wl-444L">Wheel Loader - 444L</option>
+        <option value="wl-544L">Wheel Loader - 544L</option>
+        <option value="wl-644L">Wheel Loader - 644L</option>
+        <option value="wl-744L">Wheel Loader - 744L</option>
+        <option value="wl-844L">Wheel Loader - 844L (Largest)</option>
+      </optgroup>
+      <optgroup label="Motor Graders">
+        <option value="grader-670G">Motor Grader - 670G</option>
+        <option value="grader-672G">Motor Grader - 672G</option>
+        <option value="grader-872G">Motor Grader - 872G (Largest)</option>
+      </optgroup>
+    </select>
+
+    <label>Material Type</label>
+    <select id="material">
+      <option value="topsoil">Topsoil / Loam</option>
+      <option value="dirt" selected>Common Dirt / Earth</option>
+      <option value="clay">Clay (Wet)</option>
+      <option value="sand">Sand</option>
+      <option value="gravel">Gravel</option>
+      <option value="caliche">Caliche / Hardpan</option>
+      <option value="shale">Shale</option>
+      <option value="rock">Broken Rock / Riprap</option>
+      <option value="blasted-rock">Blasted Rock</option>
+      <option value="asphalt">Asphalt (Demo)</option>
+      <option value="concrete">Concrete (Demo)</option>
+      <option value="snow">Snow</option>
+    </select>
+
+    <div class="two-col">
+      <div>
+        <label>Job Length (feet)</label>
+        <input type="number" id="length" placeholder="e.g. 500">
+      </div>
+      <div>
+        <label>Job Width (feet)</label>
+        <input type="number" id="width" placeholder="e.g. 100">
+      </div>
+    </div>
+
+    <label>Depth / Material Height (inches, if applicable)</label>
+    <input type="number" id="depth" placeholder="e.g. 12">
+
+    <button class="cat-btn" onclick="calculateJob()">CALCULATE JOB</button>
+
+    <div class="result-box" id="calc-result">
+      Enter your job details and select a machine to see estimated time and fuel usage.
+    </div>
+  </div>
+</div>
+
+<!-- ================= MAIL WINDOW ================= -->
+<div class="window" id="win-mail" style="top:90px; left:280px; width:600px; height:480px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'mail')">
+    <span>✉️ DEERE MAIL</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('mail')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('mail')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('mail')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="mail-tabs">
+      <button class="active" id="tab-inbox" onclick="mailTab('inbox')">📥 Inbox</button>
+      <button id="tab-compose" onclick="mailTab('compose')">✏️ Compose</button>
+    </div>
+
+    <div id="mail-inbox-view" class="mail-layout">
+      <div class="mail-list" id="mail-list"></div>
+      <div class="mail-view" id="mail-detail">
+        <p style="color:#888;">Select an email to view it.</p>
+      </div>
+    </div>
+
+    <div id="mail-compose-view" style="display:none;">
+      <label>To</label>
+      <input type="text" id="m-to" placeholder="recipient@deeremail.com">
+      <label>Subject</label>
+      <input type="text" id="m-subject" placeholder="Subject">
+      <label>Message</label>
+      <textarea id="m-body" rows="8" placeholder="Write your message..."></textarea>
+      <button class="cat-btn" onclick="saveEmail()">SAVE / SEND EMAIL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SEARCH WINDOW ================= -->
+<div class="window" id="win-search" style="top:80px; left:420px; width:560px; height:520px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'search')">
+    <span>🔍 DEERE SEARCH</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('search')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('search')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('search')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="search-wrap">
+      <div class="search-logo">DEERE<span>SEARCH</span></div>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search the jobsite web..." onkeydown="if(event.key==='Enter') doSearch()">
+        <button onclick="doSearch()">DIG</button>
+      </div>
+      <div class="quick-links">
+        <button onclick="quickSearch('john deere tractor prices')">Tractor Prices</button>
+        <button onclick="quickSearch('combine rental near me')">Combine Rentals</button>
+        <button onclick="quickSearch('diesel fuel prices today')">Fuel Prices</button>
+        <button onclick="quickSearch('john deere parts catalog')">Parts Catalog</button>
+      </div>
+    </div>
+    <div class="search-results" id="search-results"></div>
+  </div>
+</div>
+
+<!-- ================= MACHINE CONTROL WINDOW ================= -->
+<div class="window" id="win-control" style="top:70px; left:360px; width:520px; height:600px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'control')">
+    <span>⚙️ MACHINE CONTROL</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('control')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('control')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('control')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+
+    <div class="mc-status-banner" id="mc-status-banner">
+      <span id="mc-status-light" class="mc-status-light off"></span>
+      <span id="mc-status-text">ENGINE OFF</span>
+    </div>
+
+    <div class="mc-grid">
+      <button class="cat-btn mc-btn" id="mc-engine-btn" onclick="toggleEngine()">START ENGINE</button>
+      <button class="cat-btn mc-btn" id="mc-light-btn" onclick="toggleHeadlights()">HEADLIGHTS: OFF</button>
+      <button class="cat-btn mc-btn" onclick="refuelMachine()" style="background:#FFDE00; border-color:#FFDE00; color:#000;">REFUEL TANK</button>
+      <button class="cat-btn mc-btn" onclick="resetFuelSession()" style="background:#888; border-color:#888;">RESET SESSION FUEL</button>
+    </div>
+
+    <div class="mc-gauges">
+      <div class="gauge-card">
+        <div class="gauge-label">ENGINE TEMP</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-temp-fill" style="width:25%; background:linear-gradient(90deg,#3aa3ff,#3aa3ff);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-temp-value">100°F</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">FUEL LEVEL</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-fuel-fill" style="width:82%; background:linear-gradient(90deg,#FFDE00,#FFDE00);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-fuel-value">82%</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">ENGINE RPM</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-rpm-fill" style="width:0%; background:linear-gradient(90deg,#5ad15a,#5ad15a);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-rpm-value">0 RPM</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">HYDRAULIC PRESSURE</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-hyd-fill" style="width:0%; background:linear-gradient(90deg,#ff8a3a,#ff8a3a);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-hyd-value">0 PSI</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">BATTERY VOLTAGE</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-batt-fill" style="width:96%; background:linear-gradient(90deg,#9a5cff,#9a5cff);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-batt-value">12.6V</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">ENGINE HOURS</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" style="width:100%; background:#444;"></div>
+        </div>
+        <div class="gauge-value" id="gauge-hours-value">4,128.0 hrs</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">FUEL USED (SESSION)</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-fuelused-fill" style="width:0%; background:linear-gradient(90deg,#ff5a5a,#ff5a5a);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-fuelused-value">0.00 gal</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-label">CURRENT BURN RATE</div>
+        <div class="gauge-bar-track">
+          <div class="gauge-bar-fill" id="gauge-burnrate-fill" style="width:0%; background:linear-gradient(90deg,#ff9a3a,#ff9a3a);"></div>
+        </div>
+        <div class="gauge-value" id="gauge-burnrate-value">0.0 gal/hr</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:14px;">
+      <div>
+        <label>Fuel Tank Capacity (gallons)</label>
+        <input type="number" id="mc-tank-capacity" value="450" onchange="updateTankCapacity()">
+      </div>
+      <div>
+        <label>Fuel Remaining (gallons)</label>
+        <input type="text" id="mc-fuel-remaining" value="369.0" disabled>
+      </div>
+    </div>
+
+    <div class="result-box" id="mc-log">
+      <b>Machine Log:</b><br>
+      System ready. Engine off. Headlights off.
+    </div>
+  </div>
+</div>
+
+<!-- ================= LOGGING CALCULATOR WINDOW ================= -->
+<div class="window" id="win-logging" style="top:75px; left:200px; width:480px; height:600px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'logging')">
+    <span>🌲 LOGGING CALCULATOR</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('logging')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('logging')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('logging')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <label>Calculation Type</label>
+    <select id="log-calc-type" onchange="toggleLogCalcType()">
+      <option value="boardfeet" selected>Log Volume (Board Feet - Doyle Rule)</option>
+      <option value="harvest">Harvest Job Estimate (Forwarder/Skidder)</option>
+    </select>
+
+    <div id="log-boardfeet-fields">
+      <div class="two-col">
+        <div>
+          <label>Small-End Diameter (inches)</label>
+          <input type="number" id="log-diameter" placeholder="e.g. 18">
+        </div>
+        <div>
+          <label>Log Length (feet)</label>
+          <input type="number" id="log-length" placeholder="e.g. 16">
+        </div>
+      </div>
+      <label>Number of Logs</label>
+      <input type="number" id="log-count" placeholder="e.g. 1" value="1">
+
+      <label>Species (for approximate market value)</label>
+      <select id="log-species">
+        <option value="pine">Southern Yellow Pine - $0.35/bd ft</option>
+        <option value="oak">White Oak - $0.65/bd ft</option>
+        <option value="redoak">Red Oak - $0.55/bd ft</option>
+        <option value="poplar">Poplar / Tulipwood - $0.30/bd ft</option>
+        <option value="walnut">Black Walnut - $1.50/bd ft</option>
+        <option value="cherry">Black Cherry - $0.90/bd ft</option>
+        <option value="maple">Hard Maple - $0.70/bd ft</option>
+        <option value="hickory">Hickory - $0.45/bd ft</option>
+        <option value="fir">Douglas Fir - $0.40/bd ft</option>
+        <option value="cedar">Cedar - $0.60/bd ft</option>
+      </select>
+
+      <button class="cat-btn" onclick="calcBoardFeet()">CALCULATE VOLUME &amp; VALUE</button>
+    </div>
+
+    <div id="log-harvest-fields" style="display:none;">
+      <label>Select Forestry Machine</label>
+      <select id="log-machine">
+        <optgroup label="Skidders">
+          <option value="sk-548L">Skidder - 548L (Cable)</option>
+          <option value="sk-648L">Skidder - 648L (Grapple)</option>
+          <option value="sk-748L">Skidder - 748L (Grapple)</option>
+          <option value="sk-848L" selected>Skidder - 848L (Grapple)</option>
+          <option value="sk-948L">Skidder - 948L (Largest Grapple)</option>
+        </optgroup>
+        <optgroup label="Forwarders">
+          <option value="fw-1010G">Forwarder - 1010G</option>
+          <option value="fw-1110G">Forwarder - 1110G</option>
+          <option value="fw-1210G">Forwarder - 1210G</option>
+        </optgroup>
+        <optgroup label="Feller Bunchers / Harvesters">
+          <option value="fb-643L">Feller Buncher - 643L</option>
+          <option value="fb-843L">Feller Buncher - 843L (Tracked)</option>
+          <option value="hv-959M">Tracked Harvester - 959M</option>
+        </optgroup>
+      </select>
+
+      <label>Estimated Standing Volume (board feet)</label>
+      <input type="number" id="log-volume-bf" placeholder="e.g. 50000">
+
+      <label>Average Haul Distance (feet, one-way to landing)</label>
+      <input type="number" id="log-haul-distance" placeholder="e.g. 800" value="500">
+
+      <button class="cat-btn" onclick="calcHarvestJob()">CALCULATE HARVEST TIME &amp; FUEL</button>
+    </div>
+
+    <div class="result-box" id="log-result">
+      Enter log dimensions or job details to calculate volume, value, or harvest time.
+    </div>
+  </div>
+</div>
+
+<!-- ================= FIELD MAPS WINDOW ================= -->
+<div class="window" id="win-maps" style="top:50px; left:200px; width:760px; height:640px; display:none;">
+  <div class="window-titlebar" onmousedown="startDrag(event,'maps')">
+    <span>🗺️ FIELD MAPS</span>
+    <div class="window-controls">
+      <div class="win-btn" onclick="minimizeWindow('maps')">_</div>
+      <div class="win-btn" onclick="toggleMaximize('maps')">⛶</div>
+      <div class="win-btn" onclick="closeWindow('maps')">✕</div>
+    </div>
+  </div>
+  <div class="window-body" style="display:flex; flex-direction:column; padding:10px;">
+    <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+      <input type="text" id="map-search" placeholder="Pin name..." style="flex:1; min-width:120px;" onkeydown="if(event.key==='Enter') setMapMode('pin')">
+      <button class="cat-btn" id="map-mode-pin" style="width:auto; margin-top:0; padding:8px 12px;" onclick="setMapMode('pin')">📍 PIN</button>
+      <button class="cat-btn" id="map-mode-measure" style="width:auto; margin-top:0; padding:8px 12px; background:#888; border-color:#888;" onclick="setMapMode('measure')">📏 MEASURE</button>
+      <button class="cat-btn" style="width:auto; margin-top:0; padding:8px 12px; background:#888; border-color:#888;" onclick="clearMapPins()">CLEAR PINS</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
+      <label style="margin:0; display:flex; align-items:center; gap:5px; color:#fff; font-weight:normal; font-size:12px;">
+        <input type="checkbox" id="map-layer-fields" checked onchange="toggleLayer('fields')" style="width:auto;"> Field Boundaries
+      </label>
+      <label style="margin:0; display:flex; align-items:center; gap:5px; color:#fff; font-weight:normal; font-size:12px;">
+        <input type="checkbox" id="map-layer-roads" checked onchange="toggleLayer('roads')" style="width:auto;"> Roads/Trails
+      </label>
+      <label style="margin:0; display:flex; align-items:center; gap:5px; color:#fff; font-weight:normal; font-size:12px;">
+        <input type="checkbox" id="map-layer-grid" checked onchange="toggleLayer('grid')" style="width:auto;"> Grid
+      </label>
+      <div style="margin-left:auto; display:flex; gap:4px;">
+        <button class="cat-btn" style="width:auto; margin-top:0; padding:6px 12px;" onclick="mapZoom(1.25)">➕</button>
+        <button class="cat-btn" style="width:auto; margin-top:0; padding:6px 12px;" onclick="mapZoom(0.8)">➖</button>
+        <button class="cat-btn" style="width:auto; margin-top:0; padding:6px 12px; background:#888; border-color:#888;" onclick="mapResetView()">RESET</button>
+      </div>
+    </div>
+    <div id="map-canvas" style="position:relative; flex:1; background:#1c3318; border:3px solid var(--jd-green); border-radius:6px; overflow:hidden; min-height:300px; cursor:grab;"
+         onmousedown="mapMouseDown(event)" onmousemove="mapMouseMove(event)" onmouseup="mapMouseUp(event)" onmouseleave="mapMouseUp(event)" onwheel="mapWheel(event)" onclick="mapClick(event)">
+      <svg id="map-svg" width="100%" height="100%" style="position:absolute; inset:0;">
+        <g id="map-world" transform="translate(0,0) scale(1)">
+          <defs>
+            <pattern id="field-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2f5a26" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect id="map-grid-bg" x="-1000" y="-1000" width="3000" height="3000" fill="url(#field-grid)"/>
+          <g id="map-roads-layer">
+            <path d="M-200,120 C150,80 350,160 900,100" stroke="#3a6b30" stroke-width="14" fill="none" opacity="0.5"/>
+            <path d="M-200,300 C200,260 400,340 900,290" stroke="#2a4f22" stroke-width="20" fill="none" opacity="0.5"/>
+          </g>
+          <g id="map-fields-layer">
+            <rect x="40" y="40" width="220" height="140" fill="#4a7a3a" opacity="0.35" stroke="#FFDE00" stroke-width="1" stroke-dasharray="4 3"/>
+            <rect x="320" y="200" width="260" height="180" fill="#4a7a3a" opacity="0.35" stroke="#FFDE00" stroke-width="1" stroke-dasharray="4 3"/>
+            <rect x="620" y="40" width="200" height="220" fill="#4a7a3a" opacity="0.35" stroke="#FFDE00" stroke-width="1" stroke-dasharray="4 3"/>
+            <rect x="40" y="320" width="240" height="160" fill="#4a7a3a" opacity="0.35" stroke="#FFDE00" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="55" y="60" fill="#cde8c4" font-size="12" font-family="Arial">North Field — 38 ac</text>
+            <text x="335" y="220" fill="#cde8c4" font-size="12" font-family="Arial">South 40 — 41 ac</text>
+            <text x="635" y="60" fill="#cde8c4" font-size="12" font-family="Arial">East Pasture — 35 ac</text>
+            <text x="55" y="340" fill="#cde8c4" font-size="12" font-family="Arial">West Bottoms — 39 ac</text>
+          </g>
+          <g id="map-measure-layer"></g>
+          <g id="map-pins-svg"></g>
+        </g>
+      </svg>
+    </div>
+    <div class="result-box" id="map-info" style="margin-top:10px;">
+      PIN mode: click the map to drop a pin. MEASURE mode: click two or more points to measure distance and enclosed area. Scroll/pinch to zoom, drag to pan. Pins are saved locally.
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ===================== WINDOW MANAGEMENT ===================== */
+const windows = ['calc','mail','search','control','logging','maps'];
+let zCounter = 100;
+let openApps = {};
+let activeAppId = null;
+let winState = {}; // tracks {minimized, maximized, prevRect}
+
+function openWindow(id){
+  const w = document.getElementById('win-'+id);
+
+  // If this app is already open and visible/active -> clicking icon again closes it
+  if(w.style.display !== 'none'){
+    if(activeAppId === id && !(winState[id] && winState[id].minimized)){
+      closeWindow(id);
+      return;
+    }
+  }
+
+  // restore from minimized
+  if(winState[id] && winState[id].minimized){
+    w.style.display = 'flex';
+    winState[id].minimized = false;
+  } else {
+    w.style.display = 'flex';
+  }
+
+  w.style.zIndex = ++zCounter;
+  if(!openApps[id]) addTaskbarApp(id);
+  setActive(id);
+}
+
+function closeWindow(id){
+  document.getElementById('win-'+id).style.display='none';
+  removeTaskbarApp(id);
+  delete winState[id];
+  if(activeAppId === id) activeAppId = null;
+}
+
+function minimizeWindow(id){
+  const w = document.getElementById('win-'+id);
+  w.style.display = 'none';
+  if(!winState[id]) winState[id] = {};
+  winState[id].minimized = true;
+  if(activeAppId === id) activeAppId = null;
+  document.querySelectorAll('.taskbar-app').forEach(t=>t.classList.remove('active'));
+}
+
+function toggleMaximize(id){
+  const w = document.getElementById('win-'+id);
+  if(!winState[id]) winState[id] = {};
+  const state = winState[id];
+
+  if(!state.maximized){
+    state.prevRect = {
+      top: w.style.top, left: w.style.left,
+      width: w.style.width, height: w.style.height
+    };
+    w.style.top = '0px';
+    w.style.left = '0px';
+    w.style.width = '100vw';
+    w.style.height = 'calc(100vh - 48px)';
+    state.maximized = true;
+  } else {
+    const r = state.prevRect || {};
+    w.style.top = r.top || '60px';
+    w.style.left = r.left || '140px';
+    w.style.width = r.width || '480px';
+    w.style.height = r.height || '560px';
+    state.maximized = false;
+  }
+  setActive(id);
+}
+
+function setActive(id){
+  document.querySelectorAll('.window').forEach(w=>w.style.zIndex=99);
+  const w = document.getElementById('win-'+id);
+  w.style.zIndex = ++zCounter;
+  activeAppId = id;
+  document.querySelectorAll('.taskbar-app').forEach(t=>t.classList.remove('active'));
+  if(openApps[id]) openApps[id].classList.add('active');
+}
+
+function addTaskbarApp(id){
+  const names = {calc:'🚜 Equipment Calculator', mail:'✉️ Deere Mail', search:'🔍 Deere Search', control:'⚙️ Machine Control', logging:'🌲 Logging Calculator', maps:'🗺️ Field Maps'};
+  const btn = document.createElement('div');
+  btn.className='taskbar-app';
+  btn.textContent = names[id];
+  btn.onclick = ()=>{
+    const w = document.getElementById('win-'+id);
+    const isMin = winState[id] && winState[id].minimized;
+    if(w.style.display==='none' || isMin){
+      // restore
+      w.style.display='flex';
+      if(winState[id]) winState[id].minimized = false;
+      setActive(id);
+    } else if(activeAppId === id){
+      // already active and visible -> minimize on second click
+      minimizeWindow(id);
+    } else {
+      setActive(id);
+    }
+  };
+  document.getElementById('taskbar-apps').appendChild(btn);
+  openApps[id] = btn;
+}
+function removeTaskbarApp(id){
+  if(openApps[id]){ openApps[id].remove(); delete openApps[id]; }
+}
+
+/* Start Menu */
+function toggleStart(){
+  document.getElementById('start-menu').classList.toggle('show');
+}
+document.addEventListener('click', (e)=>{
+  const sm = document.getElementById('start-menu');
+  if(!sm.contains(e.target) && e.target.id!=='start-btn' && sm.classList.contains('show')){
+    sm.classList.remove('show');
+  }
+});
+
+/* Dragging */
+let dragData = null;
+function startDrag(e, id){
+  setActive(id);
+  const w = document.getElementById('win-'+id);
+  dragData = {
+    id, offsetX: e.clientX - w.offsetLeft, offsetY: e.clientY - w.offsetTop
+  };
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', stopDrag);
+}
+function onDrag(e){
+  if(!dragData) return;
+  const w = document.getElementById('win-'+dragData.id);
+  let x = e.clientX - dragData.offsetX;
+  let y = e.clientY - dragData.offsetY;
+  x = Math.max(0, Math.min(x, window.innerWidth - 100));
+  y = Math.max(0, Math.min(y, window.innerHeight - 100));
+  w.style.left = x+'px';
+  w.style.top = y+'px';
+}
+function stopDrag(){
+  dragData=null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', stopDrag);
+}
+
+/* Clock */
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' | ' + now.toLocaleDateString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ===================== EQUIPMENT CALCULATOR ===================== */
+// Specs: production rate (sq ft/hr for area-type, cu yd/hr for volume-type), fuel burn (gal/hour)
+const machineSpecs = {
+  // ===== COMPACT UTILITY TRACTORS (area-type: field work / mowing / loader work) =====
+  'tr-1023E': { name:'Tractor - 1023E',  type:'area', rate: 1500, fuel: 1.0, unit:'sq ft/hr' },
+  'tr-2025R': { name:'Tractor - 2025R',  type:'area', rate: 1800, fuel: 1.3, unit:'sq ft/hr' },
+  'tr-2032R': { name:'Tractor - 2032R',  type:'area', rate: 2000, fuel: 1.6, unit:'sq ft/hr' },
+  'tr-3025E': { name:'Tractor - 3025E',  type:'area', rate: 2200, fuel: 1.8, unit:'sq ft/hr' },
+  'tr-3038E': { name:'Tractor - 3038E',  type:'area', rate: 2500, fuel: 2.2, unit:'sq ft/hr' },
+  'tr-4044M': { name:'Tractor - 4044M',  type:'area', rate: 3000, fuel: 2.8, unit:'sq ft/hr' },
+  'tr-4066R': { name:'Tractor - 4066R',  type:'area', rate: 3400, fuel: 3.4, unit:'sq ft/hr' },
+
+  // ===== UTILITY TRACTORS (area-type) =====
+  'tr-5075E': { name:'Tractor - 5075E',  type:'area', rate: 4200, fuel: 4.5, unit:'sq ft/hr' },
+  'tr-5100M': { name:'Tractor - 5100M',  type:'area', rate: 5000, fuel: 5.8, unit:'sq ft/hr' },
+  'tr-6105M': { name:'Tractor - 6105M',  type:'area', rate: 6500, fuel: 7.2, unit:'sq ft/hr' },
+  'tr-6120M': { name:'Tractor - 6120M',  type:'area', rate: 7200, fuel: 8.0, unit:'sq ft/hr' },
+  'tr-6155M': { name:'Tractor - 6155M',  type:'area', rate: 8500, fuel: 9.6, unit:'sq ft/hr' },
+
+  // ===== ROW CROP TRACTORS (area-type: tillage / planting acreage) =====
+  'tr-6175R': { name:'Tractor - 6175R',  type:'area', rate: 10000, fuel: 11.0, unit:'sq ft/hr' },
+  'tr-6195R': { name:'Tractor - 6195R',  type:'area', rate: 11500, fuel: 12.5, unit:'sq ft/hr' },
+  'tr-7230R': { name:'Tractor - 7230R',  type:'area', rate: 14000, fuel: 15.0, unit:'sq ft/hr' },
+  'tr-7310R': { name:'Tractor - 7310R',  type:'area', rate: 16500, fuel: 17.5, unit:'sq ft/hr' },
+  'tr-8320R': { name:'Tractor - 8320R',  type:'area', rate: 20000, fuel: 21.0, unit:'sq ft/hr' },
+  'tr-8R 410': { name:'Tractor - 8R 410', type:'area', rate: 24000, fuel: 25.0, unit:'sq ft/hr' },
+
+  // ===== 4WD ARTICULATED TRACTORS (area-type: large-scale tillage) =====
+  'tr-9450':   { name:'Tractor - 9450 (4WD)',        type:'area', rate: 28000, fuel: 30.0, unit:'sq ft/hr' },
+  'tr-9520':   { name:'Tractor - 9520 (4WD)',        type:'area', rate: 31000, fuel: 33.0, unit:'sq ft/hr' },
+  'tr-9R 540': { name:'Tractor - 9R 540 (4WD)',      type:'area', rate: 35000, fuel: 36.0, unit:'sq ft/hr' },
+  'tr-9RX640': { name:'Tractor - 9RX 640 (Track 4WD)', type:'area', rate: 40000, fuel: 40.0, unit:'sq ft/hr' },
+
+  // ===== COMBINE HARVESTERS (area-type: harvesting acreage per hour) =====
+  'cmb-S540': { name:'Combine - S540', type:'area', rate: 18000, fuel: 12.0, unit:'sq ft/hr' },
+  'cmb-S550': { name:'Combine - S550', type:'area', rate: 22000, fuel: 14.0, unit:'sq ft/hr' },
+  'cmb-S560': { name:'Combine - S560', type:'area', rate: 26000, fuel: 16.0, unit:'sq ft/hr' },
+  'cmb-S570': { name:'Combine - S570', type:'area', rate: 30000, fuel: 18.0, unit:'sq ft/hr' },
+  'cmb-S580': { name:'Combine - S580', type:'area', rate: 34000, fuel: 20.0, unit:'sq ft/hr' },
+  'cmb-S590': { name:'Combine - S590', type:'area', rate: 38000, fuel: 22.0, unit:'sq ft/hr' },
+  'cmb-S700': { name:'Combine - S700', type:'area', rate: 42000, fuel: 24.0, unit:'sq ft/hr' },
+  'cmb-S780': { name:'Combine - S780', type:'area', rate: 48000, fuel: 28.0, unit:'sq ft/hr' },
+  'cmb-S790': { name:'Combine - S790 (Largest)', type:'area', rate: 54000, fuel: 32.0, unit:'sq ft/hr' },
+  'cmb-X9-1000': { name:'Combine - X9 1000', type:'area', rate: 60000, fuel: 36.0, unit:'sq ft/hr' },
+  'cmb-X9-1100': { name:'Combine - X9 1100', type:'area', rate: 65000, fuel: 39.0, unit:'sq ft/hr' },
+
+  // ===== SKID STEERS (volume-type: loading/moving material) =====
+  'ss-316':  { name:'Skid Steer - 316',  type:'volume', rate: 18, fuel: 1.8, unit:'cu yd/hr' },
+  'ss-318R': { name:'Skid Steer - 318R', type:'volume', rate: 20, fuel: 2.0, unit:'cu yd/hr' },
+  'ss-320':  { name:'Skid Steer - 320',  type:'volume', rate: 22, fuel: 2.2, unit:'cu yd/hr' },
+  'ss-324G': { name:'Skid Steer - 324G', type:'volume', rate: 25, fuel: 2.5, unit:'cu yd/hr' },
+  'ss-326':  { name:'Skid Steer - 326',  type:'volume', rate: 28, fuel: 2.8, unit:'cu yd/hr' },
+  'ss-332':  { name:'Skid Steer - 332',  type:'volume', rate: 32, fuel: 3.2, unit:'cu yd/hr' },
+
+  // ===== COMPACT TRACK LOADERS (volume-type) =====
+  'ctl-317G': { name:'Compact Track Loader - 317G', type:'volume', rate: 24, fuel: 2.4, unit:'cu yd/hr' },
+  'ctl-323G': { name:'Compact Track Loader - 323G', type:'volume', rate: 28, fuel: 2.8, unit:'cu yd/hr' },
+  'ctl-325G': { name:'Compact Track Loader - 325G', type:'volume', rate: 32, fuel: 3.2, unit:'cu yd/hr' },
+  'ctl-333G': { name:'Compact Track Loader - 333G', type:'volume', rate: 36, fuel: 3.6, unit:'cu yd/hr' },
+
+  // ===== CRAWLER DOZERS (area-type: blade pushing/grading) =====
+  'dz-450':  { name:'Dozer - 450',  type:'area', rate: 350,  fuel: 3.5,  unit:'sq ft/hr' },
+  'dz-550':  { name:'Dozer - 550',  type:'area', rate: 450,  fuel: 4.5,  unit:'sq ft/hr' },
+  'dz-650':  { name:'Dozer - 650',  type:'area', rate: 600,  fuel: 6.0,  unit:'sq ft/hr' },
+  'dz-700':  { name:'Dozer - 700',  type:'area', rate: 750,  fuel: 7.5,  unit:'sq ft/hr' },
+  'dz-750':  { name:'Dozer - 750',  type:'area', rate: 900,  fuel: 9.0,  unit:'sq ft/hr' },
+  'dz-850':  { name:'Dozer - 850',  type:'area', rate: 1100, fuel: 12.0, unit:'sq ft/hr' },
+  'dz-950':  { name:'Dozer - 950',  type:'area', rate: 1450, fuel: 16.0, unit:'sq ft/hr' },
+  'dz-1050': { name:'Dozer - 1050 (Largest)', type:'area', rate: 1900, fuel: 22.0, unit:'sq ft/hr' },
+
+  // ===== SKIDDERS (volume-type: log volume moved per hour) =====
+  'sk-548L': { name:'Skidder - 548L (Cable)',   type:'volume', rate: 14, fuel: 4.0, unit:'cu yd/hr (logs)' },
+  'sk-648L': { name:'Skidder - 648L (Grapple)', type:'volume', rate: 18, fuel: 5.0, unit:'cu yd/hr (logs)' },
+  'sk-748L': { name:'Skidder - 748L (Grapple)', type:'volume', rate: 22, fuel: 6.0, unit:'cu yd/hr (logs)' },
+  'sk-848L': { name:'Skidder - 848L (Grapple)', type:'volume', rate: 26, fuel: 7.0, unit:'cu yd/hr (logs)' },
+  'sk-948L': { name:'Skidder - 948L (Largest Grapple)', type:'volume', rate: 32, fuel: 8.5, unit:'cu yd/hr (logs)' },
+
+  // ===== FORWARDERS & FELLER BUNCHERS (volume-type: timber handling) =====
+  'fw-1010G': { name:'Forwarder - 1010G', type:'volume', rate: 12, fuel: 3.0, unit:'cu yd/hr (logs)' },
+  'fw-1110G': { name:'Forwarder - 1110G', type:'volume', rate: 16, fuel: 3.8, unit:'cu yd/hr (logs)' },
+  'fw-1210G': { name:'Forwarder - 1210G', type:'volume', rate: 20, fuel: 4.6, unit:'cu yd/hr (logs)' },
+  'fb-643L':  { name:'Feller Buncher - 643L', type:'volume', rate: 24, fuel: 6.0, unit:'cu yd/hr (timber)' },
+  'fb-843L':  { name:'Feller Buncher - 843L (Tracked)', type:'volume', rate: 30, fuel: 7.5, unit:'cu yd/hr (timber)' },
+  'hv-959M':  { name:'Tracked Harvester - 959M', type:'volume', rate: 28, fuel: 8.0, unit:'cu yd/hr (timber)' },
+
+  // ===== EXCAVATORS (volume-type: digging/loading material) =====
+  'exc-26G':  { name:'Excavator - 26G (Compact)',  type:'volume', rate: 10,  fuel: 0.8,  unit:'cu yd/hr' },
+  'exc-35G':  { name:'Excavator - 35G (Compact)',  type:'volume', rate: 14,  fuel: 1.1,  unit:'cu yd/hr' },
+  'exc-60G':  { name:'Excavator - 60G (Compact)',  type:'volume', rate: 22,  fuel: 1.8,  unit:'cu yd/hr' },
+  'exc-85G':  { name:'Excavator - 85G (Compact)',  type:'volume', rate: 32,  fuel: 2.6,  unit:'cu yd/hr' },
+  'exc-130G': { name:'Excavator - 130G',           type:'volume', rate: 45,  fuel: 3.6,  unit:'cu yd/hr' },
+  'exc-135G': { name:'Excavator - 135G',           type:'volume', rate: 50,  fuel: 4.0,  unit:'cu yd/hr' },
+  'exc-210G': { name:'Excavator - 210G LC',        type:'volume', rate: 80,  fuel: 6.0,  unit:'cu yd/hr' },
+  'exc-245G': { name:'Excavator - 245G LC',        type:'volume', rate: 105, fuel: 7.5,  unit:'cu yd/hr' },
+  'exc-290G': { name:'Excavator - 290G LC',        type:'volume', rate: 135, fuel: 9.5,  unit:'cu yd/hr' },
+  'exc-350G': { name:'Excavator - 350G LC',        type:'volume', rate: 175, fuel: 12.5, unit:'cu yd/hr' },
+  'exc-470G': { name:'Excavator - 470G LC (Largest)', type:'volume', rate: 240, fuel: 17.0, unit:'cu yd/hr' },
+
+  // ===== ARTICULATED DUMP TRUCKS (volume-type: hauling) =====
+  'dt-310E': { name:'Dump Truck - 310E (ADT)', type:'volume', rate: 100, fuel: 6.0,  unit:'cu yd/hr (hauling)' },
+  'dt-370E': { name:'Dump Truck - 370E (ADT)', type:'volume', rate: 140, fuel: 8.5,  unit:'cu yd/hr (hauling)' },
+  'dt-410E': { name:'Dump Truck - 410E (ADT)', type:'volume', rate: 175, fuel: 11.0, unit:'cu yd/hr (hauling)' },
+  'dt-460E': { name:'Dump Truck - 460E (ADT, Largest)', type:'volume', rate: 220, fuel: 14.0, unit:'cu yd/hr (hauling)' },
+
+  // ===== WHEEL LOADERS (volume-type) =====
+  'wl-244L': { name:'Wheel Loader - 244L', type:'volume', rate: 35,  fuel: 3.0,  unit:'cu yd/hr' },
+  'wl-324L': { name:'Wheel Loader - 324L', type:'volume', rate: 50,  fuel: 4.0,  unit:'cu yd/hr' },
+  'wl-444L': { name:'Wheel Loader - 444L', type:'volume', rate: 65,  fuel: 5.0,  unit:'cu yd/hr' },
+  'wl-544L': { name:'Wheel Loader - 544L', type:'volume', rate: 85,  fuel: 6.5,  unit:'cu yd/hr' },
+  'wl-644L': { name:'Wheel Loader - 644L', type:'volume', rate: 105, fuel: 8.0,  unit:'cu yd/hr' },
+  'wl-744L': { name:'Wheel Loader - 744L', type:'volume', rate: 130, fuel: 10.0, unit:'cu yd/hr' },
+  'wl-844L': { name:'Wheel Loader - 844L (Largest)', type:'volume', rate: 160, fuel: 13.0, unit:'cu yd/hr' },
+
+  // ===== MOTOR GRADERS (area-type) =====
+  'grader-670G': { name:'Motor Grader - 670G', type:'area', rate: 1100, fuel: 4.0, unit:'sq ft/hr' },
+  'grader-672G': { name:'Motor Grader - 672G', type:'area', rate: 1300, fuel: 4.8, unit:'sq ft/hr' },
+  'grader-872G': { name:'Motor Grader - 872G (Largest)', type:'area', rate: 1600, fuel: 6.0, unit:'sq ft/hr' }
+};
+
+// Material presets: rateFactor adjusts production rate (lower = slower digging/pushing),
+// fuelFactor adjusts fuel burn (higher = more strain on engine)
+const materialPresets = {
+  'topsoil':     { name:'Topsoil / Loam',        rateFactor: 1.20, fuelFactor: 0.95 },
+  'dirt':        { name:'Common Dirt / Earth',   rateFactor: 1.00, fuelFactor: 1.00 },
+  'clay':        { name:'Clay (Wet)',            rateFactor: 0.75, fuelFactor: 1.15 },
+  'sand':        { name:'Sand',                  rateFactor: 1.10, fuelFactor: 0.95 },
+  'gravel':      { name:'Gravel',                rateFactor: 0.90, fuelFactor: 1.05 },
+  'caliche':     { name:'Caliche / Hardpan',     rateFactor: 0.55, fuelFactor: 1.30 },
+  'shale':       { name:'Shale',                 rateFactor: 0.50, fuelFactor: 1.35 },
+  'rock':        { name:'Broken Rock / Riprap',  rateFactor: 0.40, fuelFactor: 1.45 },
+  'blasted-rock':{ name:'Blasted Rock',          rateFactor: 0.60, fuelFactor: 1.25 },
+  'asphalt':     { name:'Asphalt (Demo)',        rateFactor: 0.45, fuelFactor: 1.40 },
+  'concrete':    { name:'Concrete (Demo)',       rateFactor: 0.35, fuelFactor: 1.50 },
+  'snow':        { name:'Snow',                  rateFactor: 1.60, fuelFactor: 0.80 }
+};
+
+function calculateJob(){
+  const vehicle = document.getElementById('vehicle').value;
+  const material = document.getElementById('material').value;
+  const length = parseFloat(document.getElementById('length').value);
+  const width = parseFloat(document.getElementById('width').value) || 0;
+  const depthIn = parseFloat(document.getElementById('depth').value) || 0;
+  const spec = machineSpecs[vehicle];
+  const mat = materialPresets[material];
+  const result = document.getElementById('calc-result');
+
+  if(!length || length <= 0){
+    result.innerHTML = '⚠️ Please enter a valid job length.';
+    return;
+  }
+
+  // Material-adjusted machine performance
+  const effRate = spec.rate * mat.rateFactor;
+  const effFuel = spec.fuel * mat.fuelFactor;
+
+  let hours, volumeCY = 0, area = 0;
+
+  if(spec.type === 'area'){
+    area = length * (width || 1);
+    hours = area / effRate;
+    if(hours < 0.05) hours = 0.05;
+  } else {
+    area = length * (width || 1);
+    const depthFt = (depthIn || 12) / 12; // default to 1ft if not specified
+    volumeCY = (area * depthFt) / 27; // cubic feet to cubic yards
+    hours = volumeCY / effRate;
+    if(hours < 0.05) hours = 0.05;
+  }
+
+  const fuel = hours * effFuel;
+
+  let html = `<b>Machine:</b> ${spec.name}<br>`;
+  html += `<b>Material:</b> ${mat.name}<br>`;
+  if(spec.type==='area'){
+    html += `<b>Area:</b> ${area.toLocaleString()} sq ft<br>`;
+  } else {
+    html += `<b>Area:</b> ${area.toLocaleString()} sq ft<br>`;
+    html += `<b>Depth Used:</b> ${depthIn ? depthIn : 12} in<br>`;
+    html += `<b>Volume:</b> ${volumeCY.toFixed(1)} cu yd<br>`;
+  }
+  html += `<b>Base Production Rate:</b> ${spec.rate} ${spec.unit}<br>`;
+  html += `<b>Adjusted Production Rate:</b> ${effRate.toFixed(1)} ${spec.unit}<br>`;
+  html += `<hr style="border-color:#444; margin:8px 0;">`;
+  html += `<b>Estimated Time:</b> ${hours.toFixed(2)} hours (${(hours*60).toFixed(0)} min)<br>`;
+  html += `<b>Estimated Fuel Used:</b> ${fuel.toFixed(1)} gallons<br>`;
+  html += `<b>Base Fuel Burn Rate:</b> ${spec.fuel} gal/hr<br>`;
+  html += `<b>Adjusted Fuel Burn Rate:</b> ${effFuel.toFixed(1)} gal/hr`;
+
+  result.innerHTML = html;
+}
+
+/* ===================== DEERE MAIL ===================== */
+const STORAGE_KEY = 'jdmail_emails';
+
+function loadEmails(){
+  const data = localStorage.getItem(STORAGE_KEY);
+  if(data) return JSON.parse(data);
+  // default sample emails
+  const defaults = [
+    {id:1, from:'dispatch@deeremail.com', to:'me@deeremail.com', subject:'New Job Site Assignment', body:'You have been assigned to the North Field tillage project starting Monday. Bring the 8R 410 tractor.', date: new Date().toLocaleString()},
+    {id:2, from:'parts@deeremail.com', to:'me@deeremail.com', subject:'Parts Order Shipped', body:'Your replacement undercarriage parts for the 210G LC Excavator have shipped and will arrive Thursday.', date: new Date().toLocaleString()}
+  ];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+  return defaults;
+}
+function saveEmails(emails){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
+}
+
+function renderMailList(){
+  const emails = loadEmails();
+  const list = document.getElementById('mail-list');
+  list.innerHTML = '';
+  emails.slice().reverse().forEach(email=>{
+    const div = document.createElement('div');
+    div.className = 'mail-item';
+    div.innerHTML = `<div class="m-subj">${escapeHtml(email.subject)}</div>
+                      <div class="m-meta">From: ${escapeHtml(email.from)}</div>
+                      <div class="m-meta">${email.date}</div>`;
+    div.onclick = ()=> viewEmail(email.id);
+    list.appendChild(div);
+  });
+}
+
+function viewEmail(id){
+  const emails = loadEmails();
+  const email = emails.find(e=>e.id===id);
+  if(!email) return;
+  document.getElementById('mail-detail').innerHTML = `
+    <h3 style="color:var(--jd-green); margin-bottom:8px;">${escapeHtml(email.subject)}</h3>
+    <p style="color:#aaa; font-size:12px;">From: ${escapeHtml(email.from)}</p>
+    <p style="color:#aaa; font-size:12px;">To: ${escapeHtml(email.to)}</p>
+    <p style="color:#aaa; font-size:12px; margin-bottom:10px;">${email.date}</p>
+    <hr style="border-color:#444; margin-bottom:10px;">
+    <p style="white-space:pre-wrap; line-height:1.6;">${escapeHtml(email.body)}</p>
+    <button class="cat-btn" style="margin-top:14px;" onclick="deleteEmail(${email.id})">DELETE</button>
+  `;
+}
+
+function deleteEmail(id){
+  let emails = loadEmails();
+  emails = emails.filter(e=>e.id!==id);
+  saveEmails(emails);
+  renderMailList();
+  document.getElementById('mail-detail').innerHTML = '<p style="color:#888;">Select an email to view it.</p>';
+}
+
+function saveEmail(){
+  const to = document.getElementById('m-to').value.trim();
+  const subject = document.getElementById('m-subject').value.trim();
+  const body = document.getElementById('m-body').value.trim();
+  if(!to || !subject){
+    alert('Please enter a recipient and subject.');
+    return;
+  }
+  const emails = loadEmails();
+  const newEmail = {
+    id: Date.now(),
+    from: 'me@deeremail.com',
+    to: to,
+    subject: subject,
+    body: body,
+    date: new Date().toLocaleString()
+  };
+  emails.push(newEmail);
+  saveEmails(emails);
+  document.getElementById('m-to').value='';
+  document.getElementById('m-subject').value='';
+  document.getElementById('m-body').value='';
+  alert('Email saved to Deere Mail!');
+  mailTab('inbox');
+}
+
+function mailTab(tab){
+  document.getElementById('tab-inbox').classList.toggle('active', tab==='inbox');
+  document.getElementById('tab-compose').classList.toggle('active', tab==='compose');
+  document.getElementById('mail-inbox-view').style.display = tab==='inbox' ? 'flex' : 'none';
+  document.getElementById('mail-compose-view').style.display = tab==='compose' ? 'block' : 'none';
+  if(tab==='inbox') renderMailList();
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+renderMailList();
+
+/* ===================== DEERE SEARCH ===================== */
+function doSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  if(!q) return;
+  quickSearch(q);
+}
+function quickSearch(q){
+  document.getElementById('search-input').value = q;
+  const resultsDiv = document.getElementById('search-results');
+  resultsDiv.innerHTML = '<p style="color:#888; text-align:center;">Digging up results...</p>';
+
+  // Simulated search results (no external API)
+  setTimeout(()=>{
+    const fakeResults = generateFakeResults(q);
+    resultsDiv.innerHTML = fakeResults.map(r => `
+      <div class="search-result">
+        <a href="#" onclick="return false;">${escapeHtml(r.title)}</a>
+        <div class="sr-url">${escapeHtml(r.url)}</div>
+        <div class="sr-desc">${escapeHtml(r.desc)}</div>
+      </div>
+    `).join('');
+  }, 400);
+}
+function generateFakeResults(q){
+  return [
+    {title:`${q} - Official John Deere Equipment Info`, url:'www.deere.com/search?q='+encodeURIComponent(q), desc:`Find specifications, pricing, and dealer info related to "${q}". Browse the full John Deere equipment catalog.`},
+    {title:`${q} | Heavy Equipment Forum`, url:'www.heavyequipmentforums.com/'+q.replace(/\s+/g,'-'), desc:`Discussion threads from operators and contractors about ${q}, including tips, maintenance, and reviews.`},
+    {title:`Best deals on ${q} near you`, url:'www.equipmenttrader.com/results?keyword='+encodeURIComponent(q), desc:`Compare local listings and rental rates for ${q}. Updated daily with new inventory.`},
+    {title:`${q} - Wikipedia`, url:'en.wikipedia.org/wiki/'+q.replace(/\s+/g,'_'), desc:`Background information, history, and technical details about ${q}.`}
+  ];
+}
+
+/* ===================== MACHINE CONTROL ===================== */
+let engineOn = false;
+let headlightsOn = false;
+let fuelLevel = 82;        // %
+let engineTemp = 100;      // °F
+let engineHours = 4128.0;  // hrs
+let mcInterval = null;
+let tankCapacity = 450;       // gallons
+let fuelUsedSession = 0;      // gallons used since engine first started this session
+let currentBurnRate = 0;      // gal/hr
+
+function updateTankCapacity(){
+  const newCap = parseFloat(document.getElementById('mc-tank-capacity').value);
+  if(!newCap || newCap <= 0) return;
+  tankCapacity = newCap;
+  document.getElementById('mc-fuel-remaining').value = ((fuelLevel/100) * tankCapacity).toFixed(1);
+  mcLog(`Tank capacity set to ${tankCapacity.toFixed(0)} gal.`);
+}
+
+function updateFuelRemainingDisplay(){
+  const remaining = (fuelLevel/100) * tankCapacity;
+  document.getElementById('mc-fuel-remaining').value = remaining.toFixed(1);
+}
+updateFuelRemainingDisplay();
+
+function refuelMachine(){
+  fuelLevel = 100;
+  updateFuelRemainingDisplay();
+  setGauge('fuel', fuelLevel, fuelLevel.toFixed(1)+'%');
+  mcLog(`Refueled. Tank topped off to ${tankCapacity.toFixed(0)} gal (100%).`);
+}
+
+function resetFuelSession(){
+  fuelUsedSession = 0;
+  setGauge('fuelused', 0, '0.00 gal');
+  mcLog('Session fuel usage counter reset.');
+}
+
+
+
+function mcLog(msg){
+  const log = document.getElementById('mc-log');
+  const time = new Date().toLocaleTimeString();
+  log.innerHTML = `<b>Machine Log:</b><br>[${time}] ${msg}<br>` + log.innerHTML.split('<br>').slice(2).join('<br>');
+}
+
+function toggleEngine(){
+  engineOn = !engineOn;
+  const btn = document.getElementById('mc-engine-btn');
+  const banner = document.getElementById('mc-status-banner');
+  const light = document.getElementById('mc-status-light');
+  const text = document.getElementById('mc-status-text');
+
+  if(engineOn){
+    btn.textContent = 'STOP ENGINE';
+    btn.classList.add('engine-on');
+    light.classList.remove('off'); light.classList.add('on');
+    text.textContent = 'ENGINE RUNNING';
+    mcLog('Engine started. Systems online.');
+    if(mcInterval) clearInterval(mcInterval);
+    mcInterval = setInterval(updateGauges, 1000);
+  } else {
+    btn.textContent = 'START ENGINE';
+    btn.classList.remove('engine-on');
+    light.classList.remove('on'); light.classList.add('off');
+    text.textContent = 'ENGINE OFF';
+    mcLog(`Engine shut down. Total fuel used this session: ${fuelUsedSession.toFixed(2)} gal.`);
+    if(mcInterval){ clearInterval(mcInterval); mcInterval = null; }
+    // gauges return to idle
+    setGauge('rpm', 0, '0 RPM');
+    setGauge('hyd', 0, '0 PSI');
+    setGauge('burnrate', 0, '0.0 gal/hr');
+    currentBurnRate = 0;
+    engineTemp = Math.max(100, engineTemp - 10);
+    setGauge('temp', tempPct(engineTemp), engineTemp.toFixed(0)+'°F');
+  }
+}
+
+function toggleHeadlights(){
+  headlightsOn = !headlightsOn;
+  const btn = document.getElementById('mc-light-btn');
+  if(headlightsOn){
+    btn.textContent = 'HEADLIGHTS: ON';
+    btn.classList.add('lights-on');
+    mcLog('Headlights ON.');
+    document.body.style.background = 'linear-gradient(135deg, #2a2a10 0%, #4d4d33 60%, #2a2a10 100%)';
+  } else {
+    btn.textContent = 'HEADLIGHTS: OFF';
+    btn.classList.remove('lights-on');
+    mcLog('Headlights OFF.');
+    document.body.style.background = '';
+  }
+}
+
+function tempPct(t){
+  // map 100-230 F to 0-100%
+  return Math.min(100, Math.max(0, ((t-100)/130)*100));
+}
+
+function setGauge(key, pct, label){
+  const fill = document.getElementById('gauge-'+key+'-fill');
+  const val = document.getElementById('gauge-'+key+'-value');
+  if(fill) fill.style.width = pct + '%';
+  if(val) val.textContent = label;
+}
+
+function updateGauges(){
+  if(!engineOn) return;
+
+  // RPM fluctuates around idle/operating
+  const rpm = 800 + Math.floor(Math.random()*1400);
+  setGauge('rpm', Math.min(100, (rpm/2600)*100), rpm + ' RPM');
+
+  // Hydraulic pressure follows RPM loosely
+  const hyd = 1500 + Math.floor(Math.random()*2000);
+  setGauge('hyd', Math.min(100, (hyd/4000)*100), hyd + ' PSI');
+
+  // Engine temp climbs toward operating range then holds
+  if(engineTemp < 195) engineTemp += Math.random()*4;
+  else engineTemp += (Math.random()-0.5)*2;
+  engineTemp = Math.min(230, Math.max(100, engineTemp));
+  setGauge('temp', tempPct(engineTemp), engineTemp.toFixed(0)+'°F');
+
+  // Burn rate scales with RPM/hydraulic load (idle ~3 gal/hr, full load ~22 gal/hr)
+  const loadFactor = (rpm/2600) * 0.6 + (hyd/4000) * 0.4;
+  currentBurnRate = 3 + loadFactor * 19;
+  setGauge('burnrate', Math.min(100, (currentBurnRate/22)*100), currentBurnRate.toFixed(1)+' gal/hr');
+
+  // Fuel consumed this tick (1 second) based on burn rate
+  const fuelThisTick = currentBurnRate / 3600; // gallons per second
+  fuelUsedSession += fuelThisTick;
+  setGauge('fuelused', Math.min(100, (fuelUsedSession/tankCapacity)*100), fuelUsedSession.toFixed(2)+' gal');
+
+  // Fuel level depletes based on actual consumption vs tank capacity
+  const fuelPctUsedThisTick = (fuelThisTick / tankCapacity) * 100;
+  fuelLevel = Math.max(0, fuelLevel - fuelPctUsedThisTick);
+  setGauge('fuel', fuelLevel, fuelLevel.toFixed(1)+'%');
+  updateFuelRemainingDisplay();
+
+  // Engine hours tick up
+  engineHours += 1/3600;
+  document.getElementById('gauge-hours-value').textContent = engineHours.toFixed(2) + ' hrs';
+
+  // Battery voltage hovers near 14V while running
+  const batt = (13.8 + (Math.random()-0.5)*0.4).toFixed(1);
+  setGauge('batt', Math.min(100, (batt/15)*100), batt + 'V');
+
+  if(fuelLevel <= 5 && fuelLevel > 4.98){
+    mcLog('⚠️ LOW FUEL WARNING — refuel soon.');
+  }
+  if(fuelLevel <= 0.05){
+    mcLog('⛔ OUT OF FUEL — engine shutting down.');
+    toggleEngine();
+  }
+}
+
+
+/* ===================== LOGGING CALCULATOR ===================== */
+function toggleLogCalcType(){
+  const type = document.getElementById('log-calc-type').value;
+  document.getElementById('log-boardfeet-fields').style.display = type==='boardfeet' ? 'block' : 'none';
+  document.getElementById('log-harvest-fields').style.display = type==='harvest' ? 'block' : 'none';
+  document.getElementById('log-result').innerHTML = 'Enter log dimensions or job details to calculate volume, value, or harvest time.';
+}
+
+const speciesPrices = {
+  pine:    { name:'Southern Yellow Pine', price: 0.35 },
+  oak:     { name:'White Oak',            price: 0.65 },
+  redoak:  { name:'Red Oak',              price: 0.55 },
+  poplar:  { name:'Poplar / Tulipwood',   price: 0.30 },
+  walnut:  { name:'Black Walnut',         price: 1.50 },
+  cherry:  { name:'Black Cherry',         price: 0.90 },
+  maple:   { name:'Hard Maple',           price: 0.70 },
+  hickory: { name:'Hickory',              price: 0.45 },
+  fir:     { name:'Douglas Fir',          price: 0.40 },
+  cedar:   { name:'Cedar',                price: 0.60 }
+};
+
+// Doyle Log Rule: BF = ((D-4)^2 * L) / 16   (D = small-end diameter in inches, L = length in feet)
+function calcBoardFeet(){
+  const d = parseFloat(document.getElementById('log-diameter').value);
+  const l = parseFloat(document.getElementById('log-length').value);
+  const count = parseFloat(document.getElementById('log-count').value) || 1;
+  const speciesKey = document.getElementById('log-species').value;
+  const species = speciesPrices[speciesKey];
+  const result = document.getElementById('log-result');
+
+  if(!d || d <= 4 || !l || l <= 0){
+    result.innerHTML = '⚠️ Please enter a small-end diameter greater than 4 inches and a valid log length.';
+    return;
+  }
+
+  const bfPerLog = Math.pow(d - 4, 2) * l / 16;
+  const totalBF = bfPerLog * count;
+  const totalValue = totalBF * species.price;
+  const tons = totalBF / 500; // rough conversion: ~500 bd ft per ton for sawlogs
+
+  let html = `<b>Rule Used:</b> Doyle Log Rule<br>`;
+  html += `<b>Small-End Diameter:</b> ${d} in<br>`;
+  html += `<b>Log Length:</b> ${l} ft<br>`;
+  html += `<b>Number of Logs:</b> ${count}<br>`;
+  html += `<hr style="border-color:#444; margin:8px 0;">`;
+  html += `<b>Board Feet per Log:</b> ${bfPerLog.toFixed(1)} bd ft<br>`;
+  html += `<b>Total Board Feet:</b> ${totalBF.toFixed(1)} bd ft<br>`;
+  html += `<b>Approx. Weight:</b> ${tons.toFixed(2)} tons<br>`;
+  html += `<hr style="border-color:#444; margin:8px 0;">`;
+  html += `<b>Species:</b> ${species.name}<br>`;
+  html += `<b>Est. Price:</b> $${species.price.toFixed(2)} / bd ft<br>`;
+  html += `<b>Est. Total Value:</b> $${totalValue.toFixed(2)}`;
+
+  result.innerHTML = html;
+}
+
+function calcHarvestJob(){
+  const machineKey = document.getElementById('log-machine').value;
+  const spec = machineSpecs[machineKey];
+  const volumeBF = parseFloat(document.getElementById('log-volume-bf').value);
+  const haulDist = parseFloat(document.getElementById('log-haul-distance').value) || 0;
+  const result = document.getElementById('log-result');
+
+  if(!volumeBF || volumeBF <= 0){
+    result.innerHTML = '⚠️ Please enter the estimated standing volume in board feet.';
+    return;
+  }
+
+  // Convert board feet to cubic yards (approx 1 cu yd ≈ 200 bd ft for round logs)
+  const volumeCY = volumeBF / 200;
+
+  // Haul distance penalty for skidders/forwarders: longer hauls reduce effective rate
+  let distFactor = 1.0;
+  if(spec.unit.includes('logs') || spec.unit.includes('timber')){
+    distFactor = Math.max(0.3, 1 - (haulDist - 300) / 4000);
+  }
+
+  const effRate = spec.rate * distFactor;
+  const hours = volumeCY / effRate;
+  const fuel = hours * spec.fuel;
+
+  let html = `<b>Machine:</b> ${spec.name}<br>`;
+  html += `<b>Standing Volume:</b> ${volumeBF.toLocaleString()} bd ft (~${volumeCY.toFixed(1)} cu yd)<br>`;
+  html += `<b>Avg Haul Distance:</b> ${haulDist} ft<br>`;
+  html += `<hr style="border-color:#444; margin:8px 0;">`;
+  html += `<b>Base Production Rate:</b> ${spec.rate} ${spec.unit}<br>`;
+  html += `<b>Distance-Adjusted Rate:</b> ${effRate.toFixed(1)} ${spec.unit}<br>`;
+  html += `<b>Estimated Harvest Time:</b> ${hours.toFixed(2)} hours (${(hours*60).toFixed(0)} min)<br>`;
+  html += `<b>Estimated Fuel Used:</b> ${fuel.toFixed(1)} gallons`;
+
+  result.innerHTML = html;
+}
+
+/* ===================== FIELD MAPS ===================== */
+const MAP_STORAGE_KEY = 'jdmaps_pins';
+
+// View state: pan offset (tx,ty) and zoom scale
+let mapView = { tx: 0, ty: 0, scale: 1 };
+let mapMode = 'pin'; // 'pin' or 'measure'
+let measurePoints = [];
+let mapDragging = false;
+let mapDragStart = null;
+let mapDidDrag = false;
+
+function loadMapPins(){
+  const data = localStorage.getItem(MAP_STORAGE_KEY);
+  return data ? JSON.parse(data) : [];
+}
+function saveMapPins(pins){
+  localStorage.setItem(MAP_STORAGE_KEY, JSON.stringify(pins));
+}
+
+function applyMapTransform(){
+  const world = document.getElementById('map-world');
+  world.setAttribute('transform', `translate(${mapView.tx},${mapView.ty}) scale(${mapView.scale})`);
+}
+
+// Convert a screen-space mouse event to world (SVG) coordinates
+function screenToWorld(e){
+  const canvas = document.getElementById('map-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const wx = (sx - mapView.tx) / mapView.scale;
+  const wy = (sy - mapView.ty) / mapView.scale;
+  return { wx, wy };
+}
+
+function setMapMode(mode){
+  mapMode = mode;
+  document.getElementById('map-mode-pin').style.background = mode==='pin' ? 'var(--jd-green)' : '#888';
+  document.getElementById('map-mode-pin').style.borderColor = mode==='pin' ? 'var(--jd-green)' : '#888';
+  document.getElementById('map-mode-measure').style.background = mode==='measure' ? 'var(--jd-green)' : '#888';
+  document.getElementById('map-mode-measure').style.borderColor = mode==='measure' ? 'var(--jd-green)' : '#888';
+
+  if(mode==='pin'){
+    document.getElementById('map-info').innerHTML = 'PIN mode: click the map to drop a pin at that location.';
+  } else {
+    measurePoints = [];
+    renderMeasureLayer();
+    document.getElementById('map-info').innerHTML = 'MEASURE mode: click points on the map to build a path/area. Each segment shows distance; 3+ points show enclosed acreage.';
+  }
+}
+
+function toggleLayer(layer){
+  const checked = document.getElementById('map-layer-'+layer).checked;
+  if(layer==='fields') document.getElementById('map-fields-layer').style.display = checked ? '' : 'none';
+  if(layer==='roads') document.getElementById('map-roads-layer').style.display = checked ? '' : 'none';
+  if(layer==='grid') document.getElementById('map-grid-bg').style.display = checked ? '' : 'none';
+}
+
+function mapZoomCore(factor){
+  const canvas = document.getElementById('map-canvas');
+  const cx = canvas.clientWidth / 2;
+  const cy = canvas.clientHeight / 2;
+  const wx = (cx - mapView.tx) / mapView.scale;
+  const wy = (cy - mapView.ty) / mapView.scale;
+  mapView.scale = Math.max(0.2, Math.min(5, mapView.scale * factor));
+  mapView.tx = cx - wx * mapView.scale;
+  mapView.ty = cy - wy * mapView.scale;
+  applyMapTransform();
+  renderMapPins();
+  renderMeasureLayer();
+}
+function mapZoom(factor){ mapZoomCore(factor); }
+
+function mapResetView(){
+  mapView = { tx: 0, ty: 0, scale: 1 };
+  applyMapTransform();
+  renderMapPins();
+  renderMeasureLayer();
+}
+
+function mapWheel(e){
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const canvas = document.getElementById('map-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const wx = (sx - mapView.tx) / mapView.scale;
+  const wy = (sy - mapView.ty) / mapView.scale;
+  mapView.scale = Math.max(0.2, Math.min(5, mapView.scale * factor));
+  mapView.tx = sx - wx * mapView.scale;
+  mapView.ty = sy - wy * mapView.scale;
+  applyMapTransform();
+  renderMapPins();
+  renderMeasureLayer();
+}
+
+function mapMouseDown(e){
+  mapDragging = true;
+  mapDidDrag = false;
+  mapDragStart = { x: e.clientX, y: e.clientY, tx: mapView.tx, ty: mapView.ty };
+  document.getElementById('map-canvas').style.cursor = 'grabbing';
+}
+function mapMouseMove(e){
+  if(!mapDragging || !mapDragStart) return;
+  const dx = e.clientX - mapDragStart.x;
+  const dy = e.clientY - mapDragStart.y;
+  if(Math.abs(dx) > 3 || Math.abs(dy) > 3) mapDidDrag = true;
+  mapView.tx = mapDragStart.tx + dx;
+  mapView.ty = mapDragStart.ty + dy;
+  applyMapTransform();
+}
+function mapMouseUp(e){
+  mapDragging = false;
+  mapDragStart = null;
+  const canvas = document.getElementById('map-canvas');
+  if(canvas) canvas.style.cursor = 'grab';
+}
+
+function mapClick(e){
+  if(mapDidDrag){ mapDidDrag = false; return; }
+
+  const { wx, wy } = screenToWorld(e);
+
+  if(mapMode === 'pin'){
+    const nameInput = document.getElementById('map-search');
+    const name = nameInput.value.trim() || 'Marker';
+    const pins = loadMapPins();
+    pins.push({ name, x: wx, y: wy });
+    saveMapPins(pins);
+    renderMapPins();
+    nameInput.value = '';
+    document.getElementById('map-info').innerHTML = `Dropped pin "${escapeHtml(name)}" at (${wx.toFixed(0)}, ${wy.toFixed(0)}).`;
+  } else {
+    measurePoints.push({ x: wx, y: wy });
+    renderMeasureLayer();
+    updateMeasureInfo();
+  }
+}
+
+// 1 world unit = 1 foot (approx, for estimation purposes)
+const FEET_PER_UNIT = 1;
+const SQFT_PER_ACRE = 43560;
+
+function renderMeasureLayer(){
+  const layer = document.getElementById('map-measure-layer');
+  layer.innerHTML = '';
+  if(measurePoints.length === 0) return;
+
+  for(let i=0;i<measurePoints.length-1;i++){
+    const a = measurePoints[i], b = measurePoints[i+1];
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('stroke', '#FFDE00');
+    line.setAttribute('stroke-width', 2 / mapView.scale);
+    line.setAttribute('stroke-dasharray', `${6/mapView.scale} ${4/mapView.scale}`);
+    layer.appendChild(line);
+
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.sqrt(dx*dx + dy*dy) * FEET_PER_UNIT;
+    const midx = (a.x+b.x)/2, midy = (a.y+b.y)/2;
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', midx); label.setAttribute('y', midy - 6/mapView.scale);
+    label.setAttribute('fill', '#FFDE00');
+    label.setAttribute('font-size', 12 / mapView.scale);
+    label.setAttribute('font-family', 'Arial');
+    label.setAttribute('text-anchor', 'middle');
+    label.textContent = dist.toFixed(0) + ' ft';
+    layer.appendChild(label);
+  }
+
+  if(measurePoints.length >= 3){
+    const a = measurePoints[measurePoints.length-1], b = measurePoints[0];
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('stroke', '#FFDE00');
+    line.setAttribute('stroke-width', 1.5 / mapView.scale);
+    line.setAttribute('stroke-dasharray', `${3/mapView.scale} ${3/mapView.scale}`);
+    line.setAttribute('opacity', '0.6');
+    layer.appendChild(line);
+  }
+
+  measurePoints.forEach((p)=>{
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y);
+    circle.setAttribute('r', 4 / mapView.scale);
+    circle.setAttribute('fill', '#FFDE00');
+    circle.setAttribute('stroke', '#000');
+    circle.setAttribute('stroke-width', 1 / mapView.scale);
+    layer.appendChild(circle);
+  });
+}
+
+function polygonArea(points){
+  let area = 0;
+  for(let i=0;i<points.length;i++){
+    const a = points[i];
+    const b = points[(i+1)%points.length];
+    area += (a.x * b.y - b.x * a.y);
+  }
+  return Math.abs(area/2);
+}
+
+function updateMeasureInfo(){
+  const info = document.getElementById('map-info');
+  if(measurePoints.length === 0){
+    info.innerHTML = 'MEASURE mode: click points on the map to build a path/area.';
+    return;
+  }
+  let totalDist = 0;
+  for(let i=0;i<measurePoints.length-1;i++){
+    const a = measurePoints[i], b = measurePoints[i+1];
+    totalDist += Math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2) * FEET_PER_UNIT;
+  }
+  let html = `<b>Measure Points:</b> ${measurePoints.length}<br>`;
+  html += `<b>Total Path Distance:</b> ${totalDist.toFixed(1)} ft (${(totalDist/5280).toFixed(3)} mi)<br>`;
+
+  if(measurePoints.length >= 3){
+    const areaSqFt = polygonArea(measurePoints) * (FEET_PER_UNIT*FEET_PER_UNIT);
+    const acres = areaSqFt / SQFT_PER_ACRE;
+    html += `<b>Enclosed Area:</b> ${areaSqFt.toLocaleString(undefined,{maximumFractionDigits:0})} sq ft (${acres.toFixed(2)} acres)<br>`;
+  }
+  html += `<button class="cat-btn" style="margin-top:8px;" onclick="clearMeasure()">CLEAR MEASUREMENT</button>`;
+  info.innerHTML = html;
+}
+
+function clearMeasure(){
+  measurePoints = [];
+  renderMeasureLayer();
+  document.getElementById('map-info').innerHTML = 'MEASURE mode: click points on the map to build a path/area.';
+}
+
+function renderMapPins(){
+  const pins = loadMapPins();
+  const layer = document.getElementById('map-pins-svg');
+  layer.innerHTML = '';
+  pins.forEach((pin, idx)=>{
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor = 'pointer';
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', pin.x); circle.setAttribute('cy', pin.y);
+    circle.setAttribute('r', 7 / mapView.scale);
+    circle.setAttribute('fill', '#cc2222');
+    circle.setAttribute('stroke', '#000');
+    circle.setAttribute('stroke-width', 1.5 / mapView.scale);
+    g.appendChild(circle);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', pin.x); label.setAttribute('y', pin.y - 12/mapView.scale);
+    label.setAttribute('fill', '#FFDE00');
+    label.setAttribute('font-size', 12 / mapView.scale);
+    label.setAttribute('font-family', 'Arial');
+    label.setAttribute('font-weight', 'bold');
+    label.setAttribute('text-anchor', 'middle');
+    label.textContent = pin.name;
+    g.appendChild(label);
+
+    g.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      document.getElementById('map-info').innerHTML = `<b>Pin:</b> ${escapeHtml(pin.name)}<br><b>Position:</b> (${pin.x.toFixed(0)}, ${pin.y.toFixed(0)})<br><button class="cat-btn" style="margin-top:8px;" onclick="removeMapPin(${idx})">REMOVE PIN</button>`;
+    });
+
+    layer.appendChild(g);
+  });
+}
+
+function removeMapPin(idx){
+  const pins = loadMapPins();
+  pins.splice(idx,1);
+  saveMapPins(pins);
+  renderMapPins();
+  document.getElementById('map-info').innerHTML = 'Pin removed.';
+}
+
+function clearMapPins(){
+  saveMapPins([]);
+  renderMapPins();
+  document.getElementById('map-info').innerHTML = 'All pins cleared.';
+}
+
+renderMapPins();
+setMapMode('pin');
+
+openWindow('calc');
+</script>
+
+</body>
+</html>
